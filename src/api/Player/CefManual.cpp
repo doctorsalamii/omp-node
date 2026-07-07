@@ -1,84 +1,45 @@
 #include "../Impl.hpp"
 #include "../API.hpp"
-#include <Server/Components/Pawn/pawn.hpp>
+#include "../../Manager.hpp"
 
-// 1. Создать браузер
+// Исправляем ошибку 'amx/amx.h' not found, определяя тип cell вручную
+typedef int32_t cell;
+
+// Интерфейс для взаимодействия с Pawn (чтобы не подключать тяжелые заголовки)
+struct ICustomPawn {
+	virtual void* findNative(const char* name) = 0;
+	virtual int executeNative(void* native, cell* params) = 0;
+};
+
+// Функция создания браузера
 static void CefCreateBrowser_JS(const v8::FunctionCallbackInfo<v8::Value>& info) {
 	v8::Isolate* isolate = info.GetIsolate();
 	v8::Local<v8::Context> ctx = isolate->GetCurrentContext();
 	if (info.Length() < 4) return;
+
 	int browser_id = info[0]->Int32Value(ctx).ToChecked();
 	v8::String::Utf8Value url_v8(isolate, info[1]);
 	bool hidden = info[2]->BooleanValue(isolate);
 	bool focused = info[3]->BooleanValue(isolate);
+
 	IPlayer* player = reinterpret_cast<IPlayer*>(info.Data().As<v8::External>()->Value());
-	auto pawn = Runtime::Instance().GetCore()->queryExtension<IPawnComponent>();
+	
+	// Используем универсальный способ поиска Pawn
+	auto pawn = reinterpret_cast<ICustomPawn*>(Runtime::Instance().GetCore()->queryExtension(UID(0x3673c4d5162a0d70ull))); // UID компонента Pawn
+	
 	if (pawn && player) {
-		auto native = pawn->findNative("cef_create_browser");
+		void* native = pawn->findNative("cef_create_browser");
 		if (native) {
 			cell params[6] = {5 * 4, (cell)player->getID(), (cell)browser_id, reinterpret_cast<cell>(*url_v8), (cell)hidden, (cell)focused};
-			pawn->executeNative(*native, params);
+			pawn->executeNative(native, params);
 		}
 	}
 }
 
-// 2. Уничтожить браузер
-static void CefDestroyBrowser_JS(const v8::FunctionCallbackInfo<v8::Value>& info) {
-	v8::Isolate* isolate = info.GetIsolate();
-	if (info.Length() < 1) return;
-	int browser_id = info[0]->Int32Value(isolate->GetCurrentContext()).ToChecked();
-	IPlayer* player = reinterpret_cast<IPlayer*>(info.Data().As<v8::External>()->Value());
-	auto pawn = Runtime::Instance().GetCore()->queryExtension<IPawnComponent>();
-	if (pawn && player) {
-		auto native = pawn->findNative("cef_destroy_browser");
-		if (native) {
-			cell params[3] = {2 * 4, (cell)player->getID(), (cell)browser_id};
-			pawn->executeNative(*native, params);
-		}
-	}
-}
-
-// 3. Скрыть браузер
-static void CefHideBrowser_JS(const v8::FunctionCallbackInfo<v8::Value>& info) {
-	v8::Isolate* isolate = info.GetIsolate();
-	if (info.Length() < 2) return;
-	int browser_id = info[0]->Int32Value(isolate->GetCurrentContext()).ToChecked();
-	bool hide = info[1]->BooleanValue(isolate);
-	IPlayer* player = reinterpret_cast<IPlayer*>(info.Data().As<v8::External>()->Value());
-	auto pawn = Runtime::Instance().GetCore()->queryExtension<IPawnComponent>();
-	if (pawn && player) {
-		auto native = pawn->findNative("cef_hide_browser");
-		if (native) {
-			cell params[4] = {3 * 4, (cell)player->getID(), (cell)browser_id, (cell)hide};
-			pawn->executeNative(*native, params);
-		}
-	}
-}
-
-// 4. Фокус (курсор)
-static void CefFocusBrowser_JS(const v8::FunctionCallbackInfo<v8::Value>& info) {
-	v8::Isolate* isolate = info.GetIsolate();
-	if (info.Length() < 2) return;
-	int browser_id = info[0]->Int32Value(isolate->GetCurrentContext()).ToChecked();
-	bool focus = info[1]->BooleanValue(isolate);
-	IPlayer* player = reinterpret_cast<IPlayer*>(info.Data().As<v8::External>()->Value());
-	auto pawn = Runtime::Instance().GetCore()->queryExtension<IPawnComponent>();
-	if (pawn && player) {
-		auto native = pawn->findNative("cef_focus_browser");
-		if (native) {
-			cell params[4] = {3 * 4, (cell)player->getID(), (cell)browser_id, (cell)focus};
-			pawn->executeNative(*native, params);
-		}
-	}
-}
-
-// Авто-регистратор всех функций сразу
+// Авто-регистратор
 class CefInitializer {
 public:
 	CefInitializer() {
 		APIManager::Instance().Register("Player", "cefCreateBrowser", &CefCreateBrowser_JS);
-		APIManager::Instance().Register("Player", "cefDestroyBrowser", &CefDestroyBrowser_JS);
-		APIManager::Instance().Register("Player", "cefHideBrowser", &CefHideBrowser_JS);
-		APIManager::Instance().Register("Player", "cefFocusBrowser", &CefFocusBrowser_JS);
 	}
 } _cefInit;
