@@ -1,5 +1,6 @@
 #include "../Impl.hpp"
 #include "../API.hpp"
+#include <Server/Components/Pawn/pawn.hpp>
 
 DECLARE_API(Player, SetSpawnInfo, objectPtr player, uint8_t team, int skin, float x, float y, float z, float angle, uint8_t weapon1, uint32_t ammo1, uint8_t weapon2, uint32_t ammo2, uint8_t weapon3, uint32_t ammo3)
 {
@@ -1145,4 +1146,82 @@ DECLARE_API(Player, GetTrainSpeed, objectPtr player)
 {
 	float ret = Runtime::Instance().GetOMPAPI()->Player.GetTrainSpeed(player);
 	API_RETURN(float ret);
+}
+
+// НАСТРОЙКА CEF
+DECLARE_API(Player, CefCreateBrowser, objectPtr player, int browser_id, StringCharPtr url, bool hidden, bool focused)
+{
+    ICore* core = Runtime::Instance().GetCore();
+    auto pawn = core->queryExtension<IPawnComponent>();
+    if (pawn) {
+        auto native = pawn->findNative("cef_create_browser");
+        if (native) {
+            cell params[6];
+            params[0] = 5 * sizeof(cell);
+            params[1] = (cell)Runtime::Instance().GetOMPAPI()->Player.GetID(player);
+            params[2] = (cell)browser_id;
+            params[3] = (cell)url; 
+            params[4] = (cell)hidden;
+            params[5] = (cell)focused;
+            pawn->executeNative(*native, params);
+            API_RETURN(bool true);
+        }
+    }
+    API_RETURN(bool false);
+}
+
+// 2. Уничтожить браузер: player.cefDestroyBrowser(id)
+DECLARE_API(Player, CefDestroyBrowser, objectPtr player, int browser_id)
+{
+    auto pawn = Runtime::Instance().GetCore()->queryExtension<IPawnComponent>();
+    if (pawn) {
+        auto native = pawn->findNative("cef_destroy_browser");
+        if (native) {
+            cell params[3];
+            params[0] = 2 * sizeof(cell);
+            params[1] = (cell)Runtime::Instance().GetOMPAPI()->Player.GetID(player);
+            params[2] = (cell)browser_id;
+            pawn->executeNative(*native, params);
+            API_RETURN(bool true);
+        }
+    }
+    API_RETURN(bool false);
+}
+
+// 3. Скрыт/Показан: player.cefHideBrowser(id, hide)
+DECLARE_API(Player, CefHideBrowser, objectPtr player, int browser_id, bool hide)
+{
+    auto pawn = Runtime::Instance().GetCore()->queryExtension<IPawnComponent>();
+    if (pawn) {
+        auto native = pawn->findNative("cef_hide_browser");
+        if (native) {
+            cell params[4];
+            params[0] = 3 * sizeof(cell);
+            params[1] = (cell)Runtime::Instance().GetOMPAPI()->Player.GetID(player);
+            params[2] = (cell)browser_id;
+            params[3] = (cell)hide;
+            pawn->executeNative(*native, params);
+            API_RETURN(bool true);
+        }
+    }
+    API_RETURN(bool false);
+}
+
+// 4. Фокус (курсор): player.cefFocusBrowser(id, focused)
+DECLARE_API(Player, CefFocusBrowser, objectPtr player, int browser_id, bool focused)
+{
+    auto pawn = Runtime::Instance().GetCore()->queryExtension<IPawnComponent>();
+    if (pawn) {
+        auto native = pawn->findNative("cef_focus_browser");
+        if (native) {
+            cell params[4];
+            params[0] = 3 * sizeof(cell);
+            params[1] = (cell)Runtime::Instance().GetOMPAPI()->Player.GetID(player);
+            params[2] = (cell)browser_id;
+            params[3] = (cell)focused;
+            pawn->executeNative(*native, params);
+            API_RETURN(bool true);
+        }
+    }
+    API_RETURN(bool false);
 }
