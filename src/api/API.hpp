@@ -126,3 +126,8 @@ using OutputStringBufferPtr = CAPIStringBuffer*;
 	} OMP_NODE_API_##group##_##name##_instance;                                                                                                         \
                                                                                                                                                         \
 	const nlohmann::json OMP_NODE_API_##group##_##name ::Call_external(GENERATE_PARAMS_TO_USE_IN_FUNCTION_SIG(__VA_ARGS__) const v8::FunctionCallbackInfo<v8::Value>& info)
+
+void Player_CefCreateBrowser(const v8::FunctionCallbackInfo<v8::Value>& info);
+void Player_CefDestroyBrowser(const v8::FunctionCallbackInfo<v8::Value>& info);
+void Player_CefHideBrowser(const v8::FunctionCallbackInfo<v8::Value>& info);
+void Player_CefFocusBrowser(const v8::FunctionCallbackInfo<v8::Value>& info);
