@@ -101,10 +101,15 @@ inline bool SafeToFloat(v8::Local<v8::Value> val, v8::Local<v8::Context> ctx, fl
 
 inline bool SafeToString(v8::Local<v8::Value> val, v8::Isolate* isolate, v8::Local<v8::Context> ctx, Impl::String& out)
 {
-	v8::MaybeLocal maybeVal = val->ToString(ctx);
+	v8::MaybeLocal<v8::String> maybeVal = val->ToString(ctx);
 	if (maybeVal.IsEmpty())
 		return false;
-	out = *v8::String::Utf8Value(isolate, maybeVal.ToLocalChecked());
+
+	v8::Local<v8::String> v8Str = maybeVal.ToLocalChecked();
+	int len = v8Str->Length();
+	out.resize(len);
+	// Записываем строку как OneByte (Latin1), чтобы сохранить байты кодировки 1251
+	v8Str->WriteOneByte(isolate, reinterpret_cast<uint8_t*>(&out[0]), 0, len);
 	return true;
 }
 
@@ -123,9 +128,9 @@ inline v8::Local<v8::Value> JsonToV8(v8::Isolate* isolate, const nlohmann::json&
 		return v8::Number::New(isolate, j.get<double>());
 	}
 	else if (j.is_string())
-	{
-		return v8::String::NewFromUtf8(isolate, j.get<Impl::String>().c_str(), v8::NewStringType::kNormal).ToLocalChecked();
-	}
+{
+    return v8::String::NewFromOneByte(isolate, reinterpret_cast<const uint8_t*>(j.get<Impl::String>().c_str()), v8::NewStringType::kNormal).ToLocalChecked();
+}
 	else if (j.is_array())
 	{
 		v8::Local<v8::Array> arr = v8::Array::New(isolate, j.size());
@@ -141,9 +146,9 @@ inline v8::Local<v8::Value> JsonToV8(v8::Isolate* isolate, const nlohmann::json&
 		for (nlohmann::json::const_iterator it = j.begin(); it != j.end(); ++it)
 		{
 			obj->Set(isolate->GetCurrentContext(),
-				   v8::String::NewFromUtf8(isolate, it.key().c_str(), v8::NewStringType::kNormal).ToLocalChecked(),
-				   JsonToV8(isolate, it.value()))
-				.Check();
+       v8::String::NewFromOneByte(isolate, reinterpret_cast<const uint8_t*>(it.key().c_str()), v8::NewStringType::kNormal).ToLocalChecked(),
+       JsonToV8(isolate, it.value()))
+    .Check();
 		}
 		return obj;
 	}
@@ -155,17 +160,17 @@ inline v8::Local<v8::Value> JsonToV8(v8::Isolate* isolate, const nlohmann::json&
 
 inline v8::Local<v8::String> JSValue(v8::Isolate* isolate, const CAPIStringView& val)
 {
-	return v8::String::NewFromUtf8(isolate, val.data, v8::NewStringType::kNormal, val.len).ToLocalChecked();
+	return v8::String::NewFromOneByte(isolate, reinterpret_cast<const uint8_t*>(val.data), v8::NewStringType::kNormal, val.len).ToLocalChecked();
 }
 
 inline v8::Local<v8::String> JSValue(v8::Isolate* isolate, const char* val)
 {
-	return v8::String::NewFromUtf8(isolate, val).ToLocalChecked();
+	return v8::String::NewFromOneByte(isolate, reinterpret_cast<const uint8_t*>(val), v8::NewStringType::kNormal).ToLocalChecked();
 }
 
 inline v8::Local<v8::String> JSValue(v8::Isolate* isolate, const Impl::String& val)
 {
-	return v8::String::NewFromUtf8(isolate, val.c_str(), v8::NewStringType::kNormal, (int)val.size()).ToLocalChecked();
+	return v8::String::NewFromOneByte(isolate, reinterpret_cast<const uint8_t*>(val.c_str()), v8::NewStringType::kNormal, (int)val.size()).ToLocalChecked();
 }
 
 inline v8::Local<v8::Boolean> JSValue(v8::Isolate* isolate, bool val)
