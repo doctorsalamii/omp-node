@@ -1146,8 +1146,3 @@ DECLARE_API(Player, GetTrainSpeed, objectPtr player)
 	float ret = Runtime::Instance().GetOMPAPI()->Player.GetTrainSpeed(player);
 	API_RETURN(float ret);
 }
-
-DECLARE_API(Player, CefCreateBrowser, objectPtr player, int browser_id, StringCharPtr url, bool hidden, bool focused);
-DECLARE_API(Player, CefDestroyBrowser, objectPtr player, int browser_id);
-DECLARE_API(Player, CefHideBrowser, objectPtr player, int browser_id, bool hide);
-DECLARE_API(Player, CefFocusBrowser, objectPtr player, int browser_id, bool focused);
